@@ -55,6 +55,7 @@
     "mocha": "^3.5.0"
   },
   "dependencies": {
-    "@trust/jose": "^0.1.6"
+    "@trust/jose": "^0.3.2",
+    "@trust/model": "^0.1.0"
   }
 }
