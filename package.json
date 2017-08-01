@@ -4,7 +4,8 @@
   "description": "Public key caching and signature verification for JOSE",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./node_modules/.bin/mocha -w",
+    "jsdoc": "./node_modules/.bin/jsdoc -c jsdoc.json -r"
   },
   "repository": {
     "type": "git",
@@ -26,9 +27,35 @@
     "key"
   ],
   "author": "MIT Connection Science",
+  "contributors": [
+    {
+      "name": "Christian Smith",
+      "email": "smith@anvil.io",
+      "url": "http://anvil.io"
+    },
+    {
+      "name": "Greg Linklater",
+      "email": "greg@gryphus.io",
+      "url": "https://github.com/EternalDeiwos"
+    },
+    {
+      "name": "Ioan Budea",
+      "email": "ibudea@mit.edu",
+      "url": "https://github.com/johnny90"
+    }
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/anvilresearch/keycache/issues"
   },
-  "homepage": "https://github.com/anvilresearch/keycache#readme"
+  "homepage": "https://github.com/anvilresearch/keycache#readme",
+  "devDependencies": {
+    "chai": "^4.1.0",
+    "jsdoc": "^3.5.3",
+    "mocha": "^3.5.0"
+  },
+  "dependencies": {
+    "@trust/jose": "^0.3.2",
+    "@trust/model": "^0.1.0"
+  }
 }
