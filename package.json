@@ -1,0 +1,34 @@
+{
+  "name": "@trust/keycache",
+  "version": "0.0.0",
+  "description": "Public key caching and signature verification for JOSE",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anvilresearch/keycache.git"
+  },
+  "keywords": [
+    "JOSE",
+    "JWT",
+    "JWS",
+    "JWD",
+    "JWC",
+    "JWK",
+    "crypto",
+    "cryptography",
+    "signatures",
+    "verify",
+    "certificate",
+    "public",
+    "key"
+  ],
+  "author": "MIT Connection Science",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/anvilresearch/keycache/issues"
+  },
+  "homepage": "https://github.com/anvilresearch/keycache#readme"
+}
