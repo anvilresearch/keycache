@@ -1,59 +1,105 @@
+'use strict'
+
 /**
  * Dependencies
  */
-const JWKSet = require('./JWKSet')
+const PouchDB = require('pouchdb')
+const { JWK, JWKSet } = require('@trust/jwk')
 
 /**
- * LRU cache for storing JWK Sets with imported webcrypto keys in memory
+ * LRU Cache
  */
-class LRUCache {
+class LRU {
 
   /**
    * constructor
    */
-  constructor (iterable, max) {
-    this.cache = new Map(iterable)
+  constructor (options) {
+    this.cache = new Map()
+    this.store = options.store || new PouchDB('data/jwks')
     this.max = options.max
   }
 
   /**
-   * get
-   *
-   * @description
-   * Retrieve from memory cache. If not found, fetch from JKU and add to cache.
-   *
-   * @param {string} jku – url of JWK Set
-   * @returns {Promise}
+   * getJwk
    */
-  get (jku) {
-    let cache = this.cache
-    let jwks = cache.get(jku)
-
-    if (jwks) {
-      cache.delete(jku)
-      cache.set(jku, jwks)
-      return Promise.resolve(jwks)
-    }
-
-    return JWKSet.fetch(jku).then(jwks => this.set(jku, jwks))
+  getJwk (kid, jku) {
+    return Promise.resolve()
+      .then(() => this.getJwks(jku))
+      .then(jwks => this.getJwkFromJwks(jwks, jku, kid))
   }
 
   /**
-   * set
-   *
-   * @description
-   * Add a JWK Set to the cache, keyed by JKU. Remove least
-   * recently used items greater than maximum for this cache.
-   *
-   * @param {string} jku
-   * @param {Object} jwks
-   * @returns {Promise}
+   * getJwks
    */
-  set (jku, jwks) {
+  getJwks (jku) {
+    return Promise.resolve()
+      .then(() => this.getJwksFromCache(jku))
+      .then(jwks => this.getJwksFromStore(jwks, jku))
+      .then(jwks => this.getJwksFromNetwork(jwks, jku))
+      .then(jwks => this.cacheJwks(jwks))
+  }
+
+  /**
+   * getJwksFromCache
+   */
+  getJwksFromCache (jku) {
+    let cache = this.cache
+    let jwks = cache.get(jku)
+
+    return Promise.resolve(jwks)
+  }
+
+  /**
+   * getJwksFromStore
+   */
+  getJwksFromStore (jwks, jku) {
+    let { store } = this
+
+    if (jwks) {
+      return Promise.resolve(jwks)
+    }
+
+    return store.get(jku).then(data => {
+      if (!data) { return null }
+      return JWKSet.importKeys(data)
+    })
+    .catch(err => {
+      if (err.status === 404) { return null }
+      throw err
+    })
+  }
+
+  /**
+   * getJwksFromNetwork
+   */
+  getJwksFromNetwork (jwks, jku) {
+    let { store } = this
+
+    if (jwks) {
+      return Promise.resolve(jwks)
+    }
+
+    return JWKSet.importKeys(jku)
+      .then(jwks => {
+        let data = Object.assign({ _id: jku }, jwks)
+        return store.put(data).then(() => jwks)
+      })
+      .catch(err => {
+        if (err.status === 404) { return null }
+        throw err
+      })
+  }
+
+  /**
+   * cacheJwks
+   */
+  cacheJwks (jwks, jku) {
     let { cache, max } = this
 
-    // TODO
-    // verify we actually have a JWKSet?
+    if (!jwks) {
+      return Promise.reject(new Error('JWK Set not found'))
+    }
 
     cache.delete(jku)
     cache.set(jku, jwks)
@@ -69,9 +115,35 @@ class LRUCache {
     return Promise.resolve(jwks)
   }
 
+  /**
+   * getJwkFromJwks
+   */
+  getJwkFromJwks (jwks, jku, kid) {
+    let jwk = jwks.find({ kid })
+
+    // success
+    if (jwk) {
+      return Promise.resolve(jwk)
+    }
+
+    // try again
+    return Promise.resolve()
+      .then(() => this.getJwksFromNetwork(jwks, jku))
+      .then(jwks => this.cacheJwks(jwks, jku))
+      .then(jwks => {
+        let jwk = jwks.find({ kid })
+
+        if (!jwk) {
+          return Promise.reject(new Error('JWK not found in JWK Set'))
+        }
+
+        return jwk
+      })
+  }
+
 }
 
 /**
  * Export
  */
-module.exports = LRUCache
+module.exports = LRU
