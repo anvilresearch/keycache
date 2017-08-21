@@ -7,7 +7,7 @@ const PouchDB = require('pouchdb')
 const { JWK, JWKSet } = require('@trust/jwk')
 
 /**
- * LRU Cache
+ * LRU
  */
 class LRU {
 
@@ -83,11 +83,22 @@ class LRU {
     return JWKSet.importKeys(jku)
       .then(jwks => {
         let data = Object.assign({ _id: jku }, jwks)
-        return store.put(data).then(() => jwks)
-      })
-      .catch(err => {
-        if (err.status === 404) { return null }
-        throw err
+        return store.put(data)
+          .then(() => jwks)
+          .catch(err => {
+            if (err.status === 404) {
+              return null
+            }
+
+            if (err.status === 409) {
+              return store.get(jku).then(({_rev}) => {
+                data._rev = _rev
+                return store.put(data).then(() => jwks)
+              })
+            }
+
+            throw err
+          })
       })
   }
 
@@ -119,7 +130,7 @@ class LRU {
    * getJwkFromJwks
    */
   getJwkFromJwks (jwks, jku, kid) {
-    let jwk = jwks.find({ kid })
+    let jwk = jwks.find({ kid, key_ops: { $in: ['verify'] } })
 
     // success
     if (jwk) {
@@ -128,10 +139,10 @@ class LRU {
 
     // try again
     return Promise.resolve()
-      .then(() => this.getJwksFromNetwork(jwks, jku))
+      .then(() => this.getJwksFromNetwork(null, jku))
       .then(jwks => this.cacheJwks(jwks, jku))
       .then(jwks => {
-        let jwk = jwks.find({ kid })
+        let jwk = jwks.find({ kid, key_ops: { $in: ['verify'] } })
 
         if (!jwk) {
           return Promise.reject(new Error('JWK not found in JWK Set'))
