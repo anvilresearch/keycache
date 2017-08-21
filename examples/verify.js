@@ -50,7 +50,7 @@ JWKSet.generateKeys('ES256').then(signer => {
       }
     ],
     //result: 'instance'
-    serialization: 'compact'
+    //serialization: 'compact'
   })
 })
 
@@ -58,19 +58,9 @@ JWKSet.generateKeys('ES256').then(signer => {
 .then(doc => {
   console.log(doc)
 
-  //JWKSet.importKeys('http://localhost:6969/jwks')
-    //.then(jwks => {
-    //  return jwks.find({
-    //    kid: JSON.parse(doc).signatures[0]['protected'].kid
-    //  })
-    //})
-    //.then(console.log)
-
-  return verifier.verify(doc)
+  // second argument is for policy/rules
+  return verifier.verify(doc, {})
 })
-
-
 
 .then(console.log)
 .catch(console.log)
-
