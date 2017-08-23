@@ -7,6 +7,11 @@ const PouchDB = require('pouchdb')
 const { JWK, JWKSet } = require('@trust/jwk')
 
 /**
+ * Default storage
+ */
+PouchDB.plugin(require('pouchdb-adapter-memory'))
+
+/**
  * LRU
  */
 class LRU {
