@@ -14,10 +14,10 @@ class LRU {
   /**
    * constructor
    */
-  constructor (options) {
+  constructor (options = {}) {
     this.cache = new Map()
-    this.store = options.store || new PouchDB('data/jwks')
-    this.max = options.max
+    this.store = options.store || new PouchDB('cache', { adapter: 'memory' })
+    this.max = options.max || 25
   }
 
   /**
@@ -45,7 +45,7 @@ class LRU {
    */
   getJwksFromCache (jku) {
     let cache = this.cache
-    let jwks = cache.get(jku)
+    let jwks = cache.get(jku) || null
 
     return Promise.resolve(jwks)
   }
@@ -64,8 +64,13 @@ class LRU {
       if (!data) { return null }
       return JWKSet.importKeys(data)
     })
+
+    // pouchdb rejects with a 404
     .catch(err => {
-      if (err.status === 404) { return null }
+      if (err.status === 404) {
+        return null
+      }
+
       throw err
     })
   }
@@ -86,10 +91,6 @@ class LRU {
         return store.put(data)
           .then(() => jwks)
           .catch(err => {
-            if (err.status === 404) {
-              return null
-            }
-
             if (err.status === 409) {
               return store.get(jku).then(({_rev}) => {
                 data._rev = _rev
@@ -100,6 +101,18 @@ class LRU {
             throw err
           })
       })
+      .catch(err => {
+        // we don't care downstream *why* it couldn't be fetched?
+        // only that we don't have a JWK Set...
+        // shouldn't interrupt program.
+        // paper over it? should we log something?
+        // JWKSet.importKeys should give typed error.
+        if (err.message.match('Failed to fetch remote JWKSet')) {
+          return null
+        }
+
+        throw err
+      })
   }
 
   /**
@@ -107,6 +120,8 @@ class LRU {
    */
   cacheJwks (jwks, jku) {
     let { cache, max } = this
+
+    //console.log('WE GONNA CACHE NOW YES?', jwks, jku)
 
     if (!jwks) {
       return Promise.reject(new Error('JWK Set not found'))
@@ -137,6 +152,7 @@ class LRU {
       return Promise.resolve(jwk)
     }
 
+    //console.log('JKU KIDDING', jku)
     // try again
     return Promise.resolve()
       .then(() => this.getJwksFromNetwork(null, jku))
